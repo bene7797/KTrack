@@ -7,6 +7,7 @@ import { lookupBarcode } from '../off'
 import type { Dish, Food } from '../types'
 import { AmountForm } from './AmountForm'
 import { FoodSearch } from './FoodSearch'
+import { Icon } from './Icons'
 import { Scanner } from './Scanner'
 import { SportForm } from './SportForm'
 
@@ -105,30 +106,45 @@ export function AddSheet({ date, onClose }: Props) {
                 <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} />
               </label>
               <div className="action-grid">
-                <button type="button" className="action-card" onClick={() => setView({ t: 'scan' })}>
+                <button type="button" className="action-card scan-card" onClick={() => setView({ t: 'scan' })}>
+                  <span className="action-icon">
+                    <Icon name="scan" />
+                  </span>
                   <span>Scannen</span>
                   <small>Barcode</small>
                 </button>
-                <button type="button" className="action-card" onClick={() => setView({ t: 'manual' })}>
+                <button type="button" className="action-card search-card" onClick={() => setView({ t: 'manual' })}>
+                  <span className="action-icon">
+                    <Icon name="search" />
+                  </span>
                   <span>Manuell</span>
                   <small>Suchen oder selbst</small>
                 </button>
-                <button type="button" className="action-card" onClick={() => setView({ t: 'dishes' })}>
+                <button type="button" className="action-card dish-card" onClick={() => setView({ t: 'dishes' })}>
+                  <span className="action-icon">
+                    <Icon name="bowl" />
+                  </span>
                   <span>Gericht</span>
                   <small>Gespeichert</small>
                 </button>
                 <button type="button" className="action-card sport-card" onClick={() => setView({ t: 'sport' })}>
+                  <span className="action-icon">
+                    <Icon name="run" />
+                  </span>
                   <span>Sport</span>
                   <small>kcal verbrauchen</small>
                 </button>
                 <button
                   type="button"
-                  className="action-card"
+                  className="action-card dish-card wide"
                   onClick={() => {
                     onClose()
                     void navigate('/neu/gericht')
                   }}
                 >
+                  <span className="action-icon">
+                    <Icon name="chef" />
+                  </span>
                   <span>Neues Gericht</span>
                   <small>Aus Zutaten</small>
                 </button>

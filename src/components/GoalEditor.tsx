@@ -63,7 +63,7 @@ export function GoalEditor({ goals, onSave }: EditorProps) {
         setOpen(false)
       }}
     >
-      <label>
+      <label className="tone-kcal">
         kcal
         <input
           inputMode="numeric"
@@ -74,7 +74,7 @@ export function GoalEditor({ goals, onSave }: EditorProps) {
         />
       </label>
       <div className="goal-macros">
-        <label>
+        <label className="tone-protein">
           Protein g
           <input
             inputMode="numeric"
@@ -84,7 +84,7 @@ export function GoalEditor({ goals, onSave }: EditorProps) {
             aria-label="Proteinziel in Gramm"
           />
         </label>
-        <label>
+        <label className="tone-carbs">
           Kohlenh. g
           <input
             inputMode="numeric"
@@ -94,7 +94,7 @@ export function GoalEditor({ goals, onSave }: EditorProps) {
             aria-label="Kohlenhydrateziel in Gramm"
           />
         </label>
-        <label>
+        <label className="tone-fat">
           Fett g
           <input
             inputMode="numeric"
@@ -201,7 +201,7 @@ export function MacroBars({
     return (
       <div className="hero-macros">
         {MACRO_ROWS.map((row) => (
-          <span key={row.key}>
+          <span key={row.key} className={`tone-${row.key}`}>
             <strong>{formatMacro(values[row.key])}</strong> {row.short}
           </span>
         ))}
@@ -216,7 +216,7 @@ export function MacroBars({
         const target = targets[row.key]
         if (target == null) {
           return (
-            <div key={row.key} className="macro-bar-row">
+            <div key={row.key} className={`macro-bar-row tone-${row.key}`}>
               <div className="macro-bar-head">
                 <span>{row.label}</span>
                 <strong>{formatMacro(value)} g</strong>
@@ -229,7 +229,7 @@ export function MacroBars({
         const pct = target > 0 ? Math.min(100, (value / target) * 100) : 0
         const own = custom?.[row.key] != null
         return (
-          <div key={row.key} className={`macro-bar-row ${over ? 'over' : ''}`}>
+          <div key={row.key} className={`macro-bar-row tone-${row.key} ${over ? 'over' : ''}`}>
             <div className="macro-bar-head">
               <span>
                 {row.label}

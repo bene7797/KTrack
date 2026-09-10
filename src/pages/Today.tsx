@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AddSheet } from '../components/AddSheet'
 import { GoalEditor, GoalLine, MacroBars } from '../components/GoalEditor'
+import { Icon, sportIcon } from '../components/Icons'
 import { EntryRow, NutrientPanel } from '../components/NutrientPanel'
 import { BackLink } from '../components/Nav'
 import { useDayTotals } from '../data'
@@ -30,12 +31,16 @@ export function Today() {
         </div>
         <p className="hero-kcal">{formatKcal(kcal)}</p>
         <div className="balance">
-          <div>
-            <span>Essen</span>
+          <div className="kcal">
+            <span>
+              <Icon name="food" /> Essen
+            </span>
             <strong>{formatKcal(kcal)}</strong>
           </div>
           <div className="sport">
-            <span>Sport</span>
+            <span>
+              <Icon name="run" /> Sport
+            </span>
             <strong>{burned > 0 ? `−${formatKcal(burned)}` : '—'}</strong>
           </div>
         </div>
@@ -55,7 +60,9 @@ export function Today() {
 
       {dayActivities.length > 0 ? (
         <>
-          <h2 className="section-label">Sport</h2>
+          <h2 className="section-label">
+            <Icon name="run" /> Sport
+          </h2>
           <ul className="entry-list">
             {dayActivities.map((activity) => (
               <li key={activity.id}>
@@ -65,6 +72,7 @@ export function Today() {
                     grams={activity.minutes}
                     kcal={-activity.kcal}
                     meta={activity.minutes > 0 ? `${activity.minutes} min` : 'Sport'}
+                    icon={sportIcon(activity.name)}
                   />
                 </Link>
               </li>
@@ -75,14 +83,16 @@ export function Today() {
 
       {dayEntries.length > 0 ? (
         <>
-          <h2 className="section-label">Essen</h2>
+          <h2 className="section-label">
+            <Icon name="food" /> Essen
+          </h2>
           <ul className="entry-list">
           {dayEntries.map((entry) => {
             const n = forGrams(entry.per100g, entry.grams)
             return (
               <li key={entry.id}>
                 <Link to={`/eintrag/${entry.id}`} className="entry-link">
-                  <EntryRow name={entry.name} grams={entry.grams} kcal={n.kcal} />
+                  <EntryRow name={entry.name} grams={entry.grams} kcal={n.kcal} icon="food" />
                 </Link>
               </li>
             )

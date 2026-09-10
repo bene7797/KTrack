@@ -99,7 +99,7 @@ export function History() {
           <button
             key={m}
             type="button"
-            className={metric === m ? 'chip on' : 'chip'}
+            className={`chip tone-${m} ${metric === m ? 'on' : ''}`}
             onClick={() => setMetric(m)}
           >
             {m === 'kcal' ? 'kcal' : m === 'protein' ? 'Protein' : m === 'carbs' ? 'Kohlenh.' : 'Fett'}
@@ -121,7 +121,7 @@ export function History() {
             <Link
               key={id}
               to={to}
-              className={`week-cell ${isToday(id) ? 'today' : ''} ${over ? 'over' : ''} ${under ? 'under' : ''}`}
+              className={`week-cell tone-${metric} ${isToday(id) ? 'today' : ''} ${over ? 'over' : ''} ${under ? 'under' : ''}`}
             >
               <span>{weekdayShort(id)}</span>
               <strong>{value > 0 ? formatMetric(value, metric) : '–'}</strong>

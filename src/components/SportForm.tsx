@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { formatKcal } from '../nutrition'
 import { kcalFromMinutes, SPORT_PRESETS } from '../sport'
+import { Icon, sportIcon } from './Icons'
 
 type Props = {
   onSubmit: (result: { name: string; minutes: number; kcal: number }) => void
@@ -29,19 +30,20 @@ export function SportForm({ onSubmit }: Props) {
       <h2 className="sheet-title">Sport</h2>
       <div className="search-tags">
         {SPORT_PRESETS.map((p) => (
-          <button
-            key={p.name}
-            type="button"
-            className={name === p.name ? 'search-tag on' : 'search-tag'}
-            onClick={() => {
-              setName(p.name)
-              setPerHour(p.kcalPerHour)
-              const next = kcalFromMinutes(p.kcalPerHour, minutesNum || 45)
-              setKcal(String(next))
-            }}
-          >
-            <span>{p.name}</span>
-          </button>
+            <button
+              key={p.name}
+              type="button"
+              className={name === p.name ? 'search-tag on sport-tag' : 'search-tag sport-tag'}
+              onClick={() => {
+                setName(p.name)
+                setPerHour(p.kcalPerHour)
+                const next = kcalFromMinutes(p.kcalPerHour, minutesNum || 45)
+                setKcal(String(next))
+              }}
+            >
+              <Icon name={sportIcon(p.name)} />
+              <span>{p.name}</span>
+            </button>
         ))}
       </div>
       <label>

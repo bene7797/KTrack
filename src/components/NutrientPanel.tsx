@@ -1,6 +1,7 @@
 import type { MacroTargets } from '../goal'
 import { formatGrams, formatKcal, formatMacro, formatVitamin, hasExtras } from '../nutrition'
 import type { Nutrients } from '../types'
+import { Icon, type IconName } from './Icons'
 
 type Props = {
   nutrients: Nutrients
@@ -16,21 +17,21 @@ export function NutrientPanel({ nutrients, gramsLabel, targets }: Props) {
     <div className="nutrients">
       {gramsLabel ? <p className="nutrients-caption">{gramsLabel}</p> : null}
       <div className="macro-grid">
-        <div>
+        <div className="tone-kcal">
           <strong>{formatKcal(nutrients.kcal)}</strong>
           <span>kcal</span>
         </div>
-        <div>
+        <div className="tone-protein">
           <strong>{formatMacro(nutrients.protein)}</strong>
           <span>Protein</span>
           {targets?.protein ? <small>von {formatMacro(targets.protein)} g</small> : null}
         </div>
-        <div>
+        <div className="tone-carbs">
           <strong>{formatMacro(nutrients.carbs)}</strong>
           <span>Kohlenh.</span>
           {targets?.carbs ? <small>von {formatMacro(targets.carbs)} g</small> : null}
         </div>
-        <div>
+        <div className="tone-fat">
           <strong>{formatMacro(nutrients.fat)}</strong>
           <span>Fett</span>
           {targets?.fat ? <small>von {formatMacro(targets.fat)} g</small> : null}
@@ -80,15 +81,22 @@ export function EntryRow({
   grams,
   kcal,
   meta,
+  icon,
 }: {
   name: string
   grams: number
   kcal: number
   meta?: string
+  icon?: IconName
 }) {
   const sport = kcal < 0
   return (
     <div className="entry-row">
+      {icon ? (
+        <span className={`entry-icon ${sport ? 'sport' : ''}`}>
+          <Icon name={icon} />
+        </span>
+      ) : null}
       <div>
         <p className="entry-name">{name}</p>
         <p className="entry-meta">{meta ?? formatGrams(grams)}</p>

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { Icon } from '../components/Icons'
 import { useData } from '../data'
 import { dishTotals, formatKcal } from '../nutrition'
 
@@ -11,7 +12,7 @@ export function Dishes() {
       <header className="page-head">
         <h1 className="page-title">Gerichte</h1>
         <button type="button" className="btn small" onClick={() => void navigate('/neu/gericht')}>
-          Neu
+          <Icon name="plus" /> Neu
         </button>
       </header>
       {dishes.length === 0 ? (

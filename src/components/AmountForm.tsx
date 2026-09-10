@@ -103,7 +103,7 @@ export function AmountForm({
       </label>
       {allowManualMacros || !per100g ? (
         <div className="manual-grid">
-          <label>
+          <label className="tone-kcal">
             kcal
             <input
               inputMode="decimal"
@@ -112,7 +112,7 @@ export function AmountForm({
               required
             />
           </label>
-          <label>
+          <label className="tone-protein">
             Protein
             <input
               inputMode="decimal"
@@ -121,7 +121,7 @@ export function AmountForm({
               placeholder="g"
             />
           </label>
-          <label>
+          <label className="tone-carbs">
             Kohlenh.
             <input
               inputMode="decimal"
@@ -130,7 +130,7 @@ export function AmountForm({
               placeholder="g"
             />
           </label>
-          <label>
+          <label className="tone-fat">
             Fett
             <input
               inputMode="decimal"
