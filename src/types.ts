@@ -52,3 +52,12 @@ export type LogEntry = {
   per100g: Nutrients
   createdAt: number
 }
+
+export type Activity = {
+  id: string
+  date: string
+  name: string
+  kcal: number
+  minutes: number
+  createdAt: number
+}

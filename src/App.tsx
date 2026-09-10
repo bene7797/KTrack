@@ -5,6 +5,7 @@ import { DishDetail } from './pages/DishDetail'
 import { DishEditor } from './pages/DishEditor'
 import { Dishes } from './pages/Dishes'
 import { EntryDetail } from './pages/EntryDetail'
+import { ActivityDetail } from './pages/ActivityDetail'
 import { History } from './pages/History'
 import { Today } from './pages/Today'
 
@@ -19,6 +20,7 @@ export default function App() {
             <Route path="/verlauf" element={<History />} />
             <Route path="/gerichte" element={<Dishes />} />
             <Route path="/eintrag/:id" element={<EntryDetail />} />
+            <Route path="/sport/:id" element={<ActivityDetail />} />
             <Route path="/gericht/:id" element={<DishDetail />} />
             <Route path="/gericht/:id/bearbeiten" element={<DishEditor />} />
             <Route path="/neu/gericht" element={<DishEditor />} />

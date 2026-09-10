@@ -60,19 +60,49 @@ export function GoalEditor({ goal, onSave }: Props) {
   )
 }
 
-export function GoalLine({ kcal, goal }: { kcal: number; goal: number | null }) {
-  if (!goal) return null
-  const remain = goal - kcal
-  if (remain >= 0) {
+export function GoalLine({
+  kcal,
+  goal,
+  burned = 0,
+}: {
+  kcal: number
+  goal: number | null
+  burned?: number
+}) {
+  if (!goal && burned <= 0) return null
+  if (!goal) {
     return (
-      <p className="goal-line">
-        noch <strong>{formatKcal(remain)}</strong> bis Ziel
+      <p className="goal-line sport">
+        <strong>−{formatKcal(burned)}</strong> Sport
       </p>
     )
   }
+  const effective = goal + burned
+  const remain = effective - kcal
+  const eatenPct = effective > 0 ? Math.min(100, (kcal / effective) * 100) : 0
+  const sportPct = effective > 0 ? (burned / effective) * 100 : 0
+  const over = remain < 0
+
   return (
-    <p className="goal-line over">
-      <strong>{formatKcal(-remain)}</strong> über Ziel
-    </p>
+    <div className={`goal-block ${over ? 'over' : ''}`}>
+      {over ? (
+        <p className="goal-line over">
+          <strong>{formatKcal(-remain)}</strong> über Ziel
+        </p>
+      ) : (
+        <p className="goal-line">
+          noch <strong>{formatKcal(remain)}</strong>
+        </p>
+      )}
+      <div className="goal-bar" aria-hidden="true">
+        {burned > 0 ? <span className="goal-bar-sport" style={{ width: `${sportPct}%` }} /> : null}
+        <span className="goal-bar-fill" style={{ width: `${eatenPct}%` }} />
+      </div>
+      {burned > 0 ? (
+        <p className="goal-cap">
+          Ziel {formatKcal(goal)} <span>+ {formatKcal(burned)} Sport</span>
+        </p>
+      ) : null}
+    </div>
   )
 }

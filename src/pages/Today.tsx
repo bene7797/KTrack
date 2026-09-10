@@ -13,10 +13,11 @@ export function Today() {
   const params = useParams()
   const date = params.date ?? todayId()
   const today = isToday(date)
-  const { dayEntries, nutrients, kcal, protein, carbs, fat } = useDayTotals(date)
+  const { dayEntries, dayActivities, nutrients, burned, kcal, protein, carbs, fat } = useDayTotals(date)
   const [adding, setAdding] = useState(false)
   const { goal, setGoal } = useKcalGoal()
   const micros = nutrients.vitamins.filter((v) => v.value > 0)
+  const empty = dayEntries.length === 0 && dayActivities.length === 0
 
   return (
     <main className="page">
@@ -27,7 +28,17 @@ export function Today() {
           <GoalEditor goal={goal} onSave={setGoal} />
         </div>
         <p className="hero-kcal">{formatKcal(kcal)}</p>
-        <GoalLine kcal={kcal} goal={goal} />
+        <div className="balance">
+          <div>
+            <span>Essen</span>
+            <strong>{formatKcal(kcal)}</strong>
+          </div>
+          <div className="sport">
+            <span>Sport</span>
+            <strong>{burned > 0 ? `−${formatKcal(burned)}` : '—'}</strong>
+          </div>
+        </div>
+        <GoalLine kcal={kcal} goal={goal} burned={burned} />
         <div className="hero-macros">
           <span>
             <strong>{formatMacro(protein)}</strong> P
@@ -41,10 +52,34 @@ export function Today() {
         </div>
       </header>
 
-      {dayEntries.length === 0 ? (
+      {empty ? (
         <p className="empty">{today ? 'Noch nichts eingetragen.' : 'Nichts an diesem Tag. Unten nachtragen.'}</p>
-      ) : (
-        <ul className="entry-list">
+      ) : null}
+
+      {dayActivities.length > 0 ? (
+        <>
+          <h2 className="section-label">Sport</h2>
+          <ul className="entry-list">
+            {dayActivities.map((activity) => (
+              <li key={activity.id}>
+                <Link to={`/sport/${activity.id}`} className="entry-link sport-link">
+                  <EntryRow
+                    name={activity.name}
+                    grams={activity.minutes}
+                    kcal={-activity.kcal}
+                    meta={activity.minutes > 0 ? `${activity.minutes} min` : 'Sport'}
+                  />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
+      {dayEntries.length > 0 ? (
+        <>
+          <h2 className="section-label">Essen</h2>
+          <ul className="entry-list">
           {dayEntries.map((entry) => {
             const n = forGrams(entry.per100g, entry.grams)
             return (
@@ -55,8 +90,9 @@ export function Today() {
               </li>
             )
           })}
-        </ul>
-      )}
+          </ul>
+        </>
+      ) : null}
 
       {micros.length > 0 || nutrients.fiber > 0.05 || nutrients.sugar > 0.05 || nutrients.salt > 0.005 ? (
         <details className="day-details">

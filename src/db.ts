@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { Dish, Food, LogEntry } from './types'
+import type { Activity, Dish, Food, LogEntry } from './types'
 
 interface KTrackDB extends DBSchema {
   foods: {
@@ -17,21 +17,32 @@ interface KTrackDB extends DBSchema {
     value: LogEntry
     indexes: { 'by-date': string }
   }
+  activities: {
+    key: string
+    value: Activity
+    indexes: { 'by-date': string }
+  }
 }
 
 let dbPromise: Promise<IDBPDatabase<KTrackDB>> | null = null
 
 function getDb() {
   if (!dbPromise) {
-    dbPromise = openDB<KTrackDB>('ktrack', 1, {
-      upgrade(db) {
-        const foods = db.createObjectStore('foods', { keyPath: 'id' })
-        foods.createIndex('by-barcode', 'barcode', { unique: false })
-        foods.createIndex('by-updated', 'updatedAt')
-        const dishes = db.createObjectStore('dishes', { keyPath: 'id' })
-        dishes.createIndex('by-updated', 'updatedAt')
-        const entries = db.createObjectStore('entries', { keyPath: 'id' })
-        entries.createIndex('by-date', 'date')
+    dbPromise = openDB<KTrackDB>('ktrack', 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          const foods = db.createObjectStore('foods', { keyPath: 'id' })
+          foods.createIndex('by-barcode', 'barcode', { unique: false })
+          foods.createIndex('by-updated', 'updatedAt')
+          const dishes = db.createObjectStore('dishes', { keyPath: 'id' })
+          dishes.createIndex('by-updated', 'updatedAt')
+          const entries = db.createObjectStore('entries', { keyPath: 'id' })
+          entries.createIndex('by-date', 'date')
+        }
+        if (oldVersion < 2) {
+          const activities = db.createObjectStore('activities', { keyPath: 'id' })
+          activities.createIndex('by-date', 'date')
+        }
       },
     })
   }
@@ -100,6 +111,23 @@ export async function putEntry(entry: LogEntry): Promise<void> {
 export async function deleteEntry(id: string): Promise<void> {
   const db = await getDb()
   await db.delete('entries', id)
+}
+
+export async function getActivities(): Promise<Activity[]> {
+  const db = await getDb()
+  const activities = await db.getAll('activities')
+  activities.sort((a, b) => b.createdAt - a.createdAt)
+  return activities
+}
+
+export async function putActivity(activity: Activity): Promise<void> {
+  const db = await getDb()
+  await db.put('activities', activity)
+}
+
+export async function deleteActivity(id: string): Promise<void> {
+  const db = await getDb()
+  await db.delete('activities', id)
 }
 
 export function newId(): string {

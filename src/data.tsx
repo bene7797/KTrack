@@ -1,13 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as db from './db'
 import { addNutrients, emptyNutrients, forGrams } from './nutrition'
-import type { Dish, Food, LogEntry, LogSource, Nutrients } from './types'
+import type { Activity, Dish, Food, LogEntry, LogSource, Nutrients } from './types'
 
 type DataCtx = {
   ready: boolean
   foods: Food[]
   dishes: Dish[]
   entries: LogEntry[]
+  activities: Activity[]
   refresh: () => Promise<void>
   saveFood: (food: Food) => Promise<void>
   saveDish: (dish: Dish) => Promise<void>
@@ -21,6 +22,9 @@ type DataCtx = {
   }) => Promise<void>
   updateEntry: (entry: LogEntry) => Promise<void>
   removeEntry: (id: string) => Promise<void>
+  logActivity: (input: { date: string; name: string; kcal: number; minutes: number }) => Promise<void>
+  updateActivity: (activity: Activity) => Promise<void>
+  removeActivity: (id: string) => Promise<void>
 }
 
 const DataContext = createContext<DataCtx | null>(null)
@@ -30,12 +34,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [foods, setFoods] = useState<Food[]>([])
   const [dishes, setDishes] = useState<Dish[]>([])
   const [entries, setEntries] = useState<LogEntry[]>([])
+  const [activities, setActivities] = useState<Activity[]>([])
 
   const refresh = useCallback(async () => {
-    const [f, d, e] = await Promise.all([db.getFoods(), db.getDishes(), db.getEntries()])
+    const [f, d, e, a] = await Promise.all([db.getFoods(), db.getDishes(), db.getEntries(), db.getActivities()])
     setFoods(f)
     setDishes(d)
     setEntries(e)
+    setActivities(a)
     setReady(true)
   }, [])
 
@@ -108,12 +114,45 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [refresh],
   )
 
+  const logActivity = useCallback(
+    async (input: { date: string; name: string; kcal: number; minutes: number }) => {
+      const activity: Activity = {
+        id: db.newId(),
+        date: input.date,
+        name: input.name.trim(),
+        kcal: Math.max(0, Math.round(input.kcal)),
+        minutes: Math.max(0, Math.round(input.minutes)),
+        createdAt: Date.now(),
+      }
+      await db.putActivity(activity)
+      await refresh()
+    },
+    [refresh],
+  )
+
+  const updateActivity = useCallback(
+    async (activity: Activity) => {
+      await db.putActivity(activity)
+      await refresh()
+    },
+    [refresh],
+  )
+
+  const removeActivity = useCallback(
+    async (id: string) => {
+      await db.deleteActivity(id)
+      await refresh()
+    },
+    [refresh],
+  )
+
   const value = useMemo(
     () => ({
       ready,
       foods,
       dishes,
       entries,
+      activities,
       refresh,
       saveFood,
       saveDish,
@@ -121,8 +160,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
       logItem,
       updateEntry,
       removeEntry,
+      logActivity,
+      updateActivity,
+      removeActivity,
     }),
-    [ready, foods, dishes, entries, refresh, saveFood, saveDish, removeDish, logItem, updateEntry, removeEntry],
+    [
+      ready,
+      foods,
+      dishes,
+      entries,
+      activities,
+      refresh,
+      saveFood,
+      saveDish,
+      removeDish,
+      logItem,
+      updateEntry,
+      removeEntry,
+      logActivity,
+      updateActivity,
+      removeActivity,
+    ],
   )
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
@@ -135,13 +193,15 @@ export function useData() {
 }
 
 export function useDayTotals(date: string) {
-  const { entries } = useData()
+  const { entries, activities } = useData()
   const dayEntries = entries.filter((e) => e.date === date)
+  const dayActivities = activities.filter((a) => a.date === date)
   const nutrients = dayEntries.reduce(
     (acc, e) => addNutrients(acc, forGrams(e.per100g, e.grams)),
     emptyNutrients(),
   )
-  return { dayEntries, nutrients, ...nutrients }
+  const burned = dayActivities.reduce((sum, a) => sum + a.kcal, 0)
+  return { dayEntries, dayActivities, nutrients, burned, ...nutrients }
 }
 
 export function foodFromParts(input: {

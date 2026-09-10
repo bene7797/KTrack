@@ -32,7 +32,7 @@ function formatMetric(n: number, metric: Metric): string {
 }
 
 export function History() {
-  const { entries } = useData()
+  const { entries, activities } = useData()
   const today = todayId()
   const weekDays = lastDays(7, today)
   const weekStart = startOfWeek(today)
@@ -41,6 +41,9 @@ export function History() {
   const [metric, setMetric] = useState<Metric>('kcal')
   const [adding, setAdding] = useState<string | null>(null)
 
+  const burnedForDate = (date: string) =>
+    activities.filter((a) => a.date === date).reduce((sum, a) => sum + a.kcal, 0)
+
   const weekNutrients = useMemo(
     () =>
       entries
@@ -48,17 +51,26 @@ export function History() {
         .reduce((acc, e) => addNutrients(acc, forGrams(e.per100g, e.grams)), emptyNutrients()),
     [entries, today, weekStart],
   )
+  const weekBurned = activities
+    .filter((a) => a.date >= weekStart && a.date <= today)
+    .reduce((sum, a) => sum + a.kcal, 0)
 
   const monthEntries = entries.filter((e) => e.date >= monthStart && e.date <= today)
   const monthSum = monthEntries.reduce((sum, e) => sum + (e.per100g.kcal * e.grams) / 100, 0)
+  const monthBurned = activities
+    .filter((a) => a.date >= monthStart && a.date <= today)
+    .reduce((sum, a) => sum + a.kcal, 0)
   const dayOfMonth = Number.parseInt(today.slice(-2), 10)
   const monthAvg = dayOfMonth > 0 ? monthSum / dayOfMonth : 0
 
   const daysInWeekSoFar = weekDays.filter((id) => id <= today).length
   const weekGoal = goal ? goal * daysInWeekSoFar : null
   const weekAvg = daysInWeekSoFar > 0 ? weekNutrients.kcal / daysInWeekSoFar : 0
+  const weekBurnedAvg = daysInWeekSoFar > 0 ? weekBurned / daysInWeekSoFar : 0
 
-  const dates = [...new Set([...weekDays, ...entries.map((e) => e.date)])].sort((a, b) => (a < b ? 1 : -1))
+  const dates = [
+    ...new Set([...weekDays, ...entries.map((e) => e.date), ...activities.map((a) => a.date)]),
+  ].sort((a, b) => (a < b ? 1 : -1))
 
   return (
     <main className="page">
@@ -81,10 +93,12 @@ export function History() {
       <div className="week-strip">
         {weekDays.map((id) => {
           const n = nutrientsForDate(entries, id)
+          const burned = burnedForDate(id)
           const value = metricValue(n, metric)
           const to = isToday(id) ? '/' : `/tag/${id}`
-          const over = metric === 'kcal' && goal != null && value > goal + 1
-          const under = metric === 'kcal' && goal != null && value > 0 && value < goal - 1
+          const effective = (goal ?? 0) + burned
+          const over = metric === 'kcal' && goal != null && n.kcal > effective + 1
+          const under = metric === 'kcal' && goal != null && n.kcal > 0 && n.kcal < effective - 1
           return (
             <Link
               key={id}
@@ -93,14 +107,21 @@ export function History() {
             >
               <span>{weekdayShort(id)}</span>
               <strong>{value > 0 ? formatMetric(value, metric) : '–'}</strong>
-              <em>{metricLabel(metric)}</em>
+              {metric === 'kcal' && burned > 0 ? (
+                <em className="sport-stat">−{formatKcal(burned)}</em>
+              ) : (
+                <em>{metricLabel(metric)}</em>
+              )}
             </Link>
           )
         })}
       </div>
       <div className="week-macros">
         <span>
-          <strong>{formatKcal(weekNutrients.kcal)}</strong> kcal
+          <strong>{formatKcal(weekNutrients.kcal)}</strong> Essen
+        </span>
+        <span className="sport-stat">
+          <strong>−{formatKcal(weekBurned)}</strong> Sport
         </span>
         <span>
           <strong>{formatMacro(weekNutrients.protein)}</strong> P
@@ -116,16 +137,14 @@ export function History() {
         <div className="stat-card">
           <span>Ø Woche</span>
           <strong>{formatKcal(weekAvg)}</strong>
-          <small>kcal / Tag</small>
-          {goal ? (
-            <GoalLine kcal={weekAvg} goal={goal} />
-          ) : null}
+          <small>kcal Essen / Tag</small>
+          {goal ? <GoalLine kcal={weekAvg} goal={goal} burned={weekBurnedAvg} /> : null}
         </div>
         <div className="stat-card">
           <span>Woche gesamt</span>
           <strong>{formatKcal(weekNutrients.kcal)}</strong>
-          <small>{weekGoal ? `Ziel ${formatKcal(weekGoal)}` : 'kcal'}</small>
-          {weekGoal ? <GoalLine kcal={weekNutrients.kcal} goal={weekGoal} /> : null}
+          <small>{weekGoal ? `Basis ${formatKcal(weekGoal)}` : 'kcal Essen'}</small>
+          {weekGoal ? <GoalLine kcal={weekNutrients.kcal} goal={weekGoal} burned={weekBurned} /> : null}
         </div>
       </div>
       <div className="stat-row">
@@ -135,9 +154,9 @@ export function History() {
           <small>kcal / Tag</small>
         </div>
         <div className="stat-card">
-          <span>Ballaststoffe</span>
-          <strong>{formatMacro(weekNutrients.fiber)}</strong>
-          <small>g diese Woche</small>
+          <span>Sport Woche</span>
+          <strong>−{formatKcal(weekBurned)}</strong>
+          <small>{monthBurned > 0 ? `Monat −${formatKcal(monthBurned)}` : 'kcal'}</small>
         </div>
       </div>
       <button type="button" className="btn" onClick={() => setAdding(todayId())}>
@@ -149,18 +168,20 @@ export function History() {
         <ul className="plain-list">
           {dates.map((id) => {
             const n = nutrientsForDate(entries, id)
+            const burned = burnedForDate(id)
             const to = isToday(id) ? '/' : `/tag/${id}`
+            const empty = n.kcal <= 0 && burned <= 0
             return (
               <li key={id}>
                 <div className="day-row">
                   <Link to={to} className="list-btn">
                     <span>{formatDayMedium(id)}</span>
                     <small>
-                      {n.kcal > 0
-                        ? `${formatKcal(n.kcal)} kcal · ${formatMacro(n.protein)} P · ${formatMacro(n.carbs)} K · ${formatMacro(n.fat)} F`
-                        : 'leer'}
+                      {empty
+                        ? 'leer'
+                        : `${formatKcal(n.kcal)} kcal${burned > 0 ? ` · −${formatKcal(burned)} Sport` : ''} · ${formatMacro(n.protein)} P · ${formatMacro(n.carbs)} K · ${formatMacro(n.fat)} F`}
                     </small>
-                    {goal && n.kcal > 0 ? <GoalLine kcal={n.kcal} goal={goal} /> : null}
+                    {goal && !empty ? <GoalLine kcal={n.kcal} goal={goal} burned={burned} /> : null}
                   </Link>
                   <button type="button" className="text-btn" onClick={() => setAdding(id)}>
                     +

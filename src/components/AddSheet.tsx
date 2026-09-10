@@ -8,6 +8,7 @@ import type { Dish, Food } from '../types'
 import { AmountForm } from './AmountForm'
 import { FoodSearch } from './FoodSearch'
 import { Scanner } from './Scanner'
+import { SportForm } from './SportForm'
 
 type View =
   | { t: 'menu' }
@@ -18,6 +19,7 @@ type View =
   | { t: 'dishes' }
   | { t: 'dish-amount'; dish: Dish }
   | { t: 'error'; barcode: string; message: string }
+  | { t: 'sport' }
 
 type Props = {
   date: string
@@ -25,7 +27,7 @@ type Props = {
 }
 
 export function AddSheet({ date, onClose }: Props) {
-  const { foods, dishes, logItem, saveFood } = useData()
+  const { foods, dishes, logItem, saveFood, logActivity } = useData()
   const navigate = useNavigate()
   const [view, setView] = useState<View>({ t: 'menu' })
   const [logDate, setLogDate] = useState(date)
@@ -114,6 +116,10 @@ export function AddSheet({ date, onClose }: Props) {
                 <button type="button" className="action-card" onClick={() => setView({ t: 'dishes' })}>
                   <span>Gericht</span>
                   <small>Gespeichert</small>
+                </button>
+                <button type="button" className="action-card sport-card" onClick={() => setView({ t: 'sport' })}>
+                  <span>Sport</span>
+                  <small>kcal verbrauchen</small>
                 </button>
                 <button
                   type="button"
@@ -265,6 +271,20 @@ export function AddSheet({ date, onClose }: Props) {
                     per100g,
                     source: { type: 'dish', id: view.dish.id },
                   })
+                  onClose()
+                }}
+              />
+            </div>
+          ) : null}
+
+          {view.t === 'sport' ? (
+            <div className="stack">
+              <button type="button" className="text-btn" onClick={() => setView({ t: 'menu' })}>
+                Zurück
+              </button>
+              <SportForm
+                onSubmit={async ({ name, minutes, kcal }) => {
+                  await logActivity({ date: logDate, name, minutes, kcal })
                   onClose()
                 }}
               />

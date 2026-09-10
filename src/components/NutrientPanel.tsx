@@ -74,18 +74,23 @@ export function EntryRow({
   name,
   grams,
   kcal,
+  meta,
 }: {
   name: string
   grams: number
   kcal: number
+  meta?: string
 }) {
+  const sport = kcal < 0
   return (
     <div className="entry-row">
       <div>
         <p className="entry-name">{name}</p>
-        <p className="entry-meta">{formatGrams(grams)}</p>
+        <p className="entry-meta">{meta ?? formatGrams(grams)}</p>
       </div>
-      <p className="entry-kcal">{formatKcal(kcal)}</p>
+      <p className={`entry-kcal ${sport ? 'sport' : ''}`}>
+        {sport ? `−${formatKcal(-kcal)}` : formatKcal(kcal)}
+      </p>
     </div>
   )
 }
