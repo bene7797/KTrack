@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AddSheet } from '../components/AddSheet'
-import { GoalEditor, GoalLine } from '../components/GoalEditor'
+import { GoalEditor, GoalLine, MacroBars } from '../components/GoalEditor'
 import { EntryRow, NutrientPanel } from '../components/NutrientPanel'
 import { BackLink } from '../components/Nav'
 import { useDayTotals } from '../data'
 import { formatDayLong, isToday, todayId } from '../dates'
-import { useKcalGoal } from '../goal'
-import { forGrams, formatKcal, formatMacro } from '../nutrition'
+import { macroTargets, useGoals } from '../goal'
+import { forGrams, formatKcal } from '../nutrition'
 
 export function Today() {
   const params = useParams()
@@ -15,7 +15,8 @@ export function Today() {
   const today = isToday(date)
   const { dayEntries, dayActivities, nutrients, burned, kcal, protein, carbs, fat } = useDayTotals(date)
   const [adding, setAdding] = useState(false)
-  const { goal, setGoal } = useKcalGoal()
+  const { goals, setGoals } = useGoals()
+  const targets = macroTargets(goals, burned)
   const micros = nutrients.vitamins.filter((v) => v.value > 0)
   const empty = dayEntries.length === 0 && dayActivities.length === 0
 
@@ -25,7 +26,7 @@ export function Today() {
       <header className="hero">
         <div className="hero-top">
           <p className="hero-label">{today ? 'kcal heute' : formatDayLong(date)}</p>
-          <GoalEditor goal={goal} onSave={setGoal} />
+          <GoalEditor goals={goals} onSave={setGoals} />
         </div>
         <p className="hero-kcal">{formatKcal(kcal)}</p>
         <div className="balance">
@@ -38,18 +39,14 @@ export function Today() {
             <strong>{burned > 0 ? `−${formatKcal(burned)}` : '—'}</strong>
           </div>
         </div>
-        <GoalLine kcal={kcal} goal={goal} burned={burned} />
-        <div className="hero-macros">
-          <span>
-            <strong>{formatMacro(protein)}</strong> P
-          </span>
-          <span>
-            <strong>{formatMacro(carbs)}</strong> K
-          </span>
-          <span>
-            <strong>{formatMacro(fat)}</strong> F
-          </span>
-        </div>
+        <GoalLine kcal={kcal} goal={goals.kcal} burned={burned} />
+        <MacroBars
+          protein={protein}
+          carbs={carbs}
+          fat={fat}
+          targets={targets}
+          custom={goals}
+        />
       </header>
 
       {empty ? (
@@ -97,7 +94,7 @@ export function Today() {
       {micros.length > 0 || nutrients.fiber > 0.05 || nutrients.sugar > 0.05 || nutrients.salt > 0.005 ? (
         <details className="day-details">
           <summary>Nährwerte &amp; Mikronährstoffe</summary>
-          <NutrientPanel nutrients={nutrients} />
+          <NutrientPanel nutrients={nutrients} targets={targets} />
         </details>
       ) : null}
 

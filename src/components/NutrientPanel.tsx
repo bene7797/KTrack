@@ -1,12 +1,14 @@
+import type { MacroTargets } from '../goal'
 import { formatGrams, formatKcal, formatMacro, formatVitamin, hasExtras } from '../nutrition'
 import type { Nutrients } from '../types'
 
 type Props = {
   nutrients: Nutrients
   gramsLabel?: string
+  targets?: MacroTargets
 }
 
-export function NutrientPanel({ nutrients, gramsLabel }: Props) {
+export function NutrientPanel({ nutrients, gramsLabel, targets }: Props) {
   const extras = hasExtras(nutrients)
   const vitamins = nutrients.vitamins.filter((v) => v.value > 0)
 
@@ -21,14 +23,17 @@ export function NutrientPanel({ nutrients, gramsLabel }: Props) {
         <div>
           <strong>{formatMacro(nutrients.protein)}</strong>
           <span>Protein</span>
+          {targets?.protein ? <small>von {formatMacro(targets.protein)} g</small> : null}
         </div>
         <div>
           <strong>{formatMacro(nutrients.carbs)}</strong>
           <span>Kohlenh.</span>
+          {targets?.carbs ? <small>von {formatMacro(targets.carbs)} g</small> : null}
         </div>
         <div>
           <strong>{formatMacro(nutrients.fat)}</strong>
           <span>Fett</span>
+          {targets?.fat ? <small>von {formatMacro(targets.fat)} g</small> : null}
         </div>
       </div>
       {extras ? (

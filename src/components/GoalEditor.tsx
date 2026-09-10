@@ -1,14 +1,34 @@
 import { useState } from 'react'
-import { formatKcal } from '../nutrition'
+import { hasMacroTargets, recommendedMacros, type Goals, type MacroTargets } from '../goal'
+import { formatKcal, formatMacro } from '../nutrition'
 
-type Props = {
-  goal: number | null
-  onSave: (n: number | null) => void
+type EditorProps = {
+  goals: Goals
+  onSave: (goals: Goals) => void
 }
 
-export function GoalEditor({ goal, onSave }: Props) {
+function parseField(raw: string): number | null {
+  const n = Number.parseInt(raw.replace(/\D/g, ''), 10)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+export function GoalEditor({ goals, onSave }: EditorProps) {
   const [open, setOpen] = useState(false)
-  const [value, setValue] = useState(goal ? String(goal) : '2200')
+  const [kcal, setKcal] = useState(goals.kcal ? String(goals.kcal) : '')
+  const [protein, setProtein] = useState(goals.protein ? String(goals.protein) : '')
+  const [carbs, setCarbs] = useState(goals.carbs ? String(goals.carbs) : '')
+  const [fat, setFat] = useState(goals.fat ? String(goals.fat) : '')
+
+  const fill = () => {
+    setKcal(goals.kcal ? String(goals.kcal) : '')
+    setProtein(goals.protein ? String(goals.protein) : '')
+    setCarbs(goals.carbs ? String(goals.carbs) : '')
+    setFat(goals.fat ? String(goals.fat) : '')
+  }
+
+  const hintKcal = parseField(kcal)
+  const rec = hintKcal ? recommendedMacros(hintKcal) : null
+  const hasAny = goals.kcal != null || goals.protein != null || goals.carbs != null || goals.fat != null
 
   if (!open) {
     return (
@@ -16,46 +36,96 @@ export function GoalEditor({ goal, onSave }: Props) {
         type="button"
         className="text-btn"
         onClick={() => {
-          setValue(goal ? String(goal) : '2200')
+          fill()
           setOpen(true)
         }}
       >
-        {goal ? `Ziel ${formatKcal(goal)}` : 'Ziel setzen'}
+        {goals.kcal
+          ? `Ziel ${formatKcal(goals.kcal)}`
+          : hasAny
+            ? 'Ziele'
+            : 'Ziel setzen'}
       </button>
     )
   }
 
   return (
     <form
-      className="goal-edit"
+      className="goal-panel"
       onSubmit={(e) => {
         e.preventDefault()
-        const n = Number.parseInt(value.replace(/\D/g, ''), 10)
-        onSave(Number.isFinite(n) && n > 0 ? n : null)
+        onSave({
+          kcal: parseField(kcal),
+          protein: parseField(protein),
+          carbs: parseField(carbs),
+          fat: parseField(fat),
+        })
         setOpen(false)
       }}
     >
-      <input
-        inputMode="numeric"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        aria-label="Tägliches kcal-Ziel"
-      />
-      <button type="submit" className="btn small primary">
-        OK
-      </button>
-      {goal ? (
-        <button
-          type="button"
-          className="text-btn"
-          onClick={() => {
-            onSave(null)
-            setOpen(false)
-          }}
-        >
-          Weg
+      <label>
+        kcal
+        <input
+          inputMode="numeric"
+          value={kcal}
+          placeholder="2200"
+          onChange={(e) => setKcal(e.target.value)}
+          aria-label="Tägliches kcal-Ziel"
+        />
+      </label>
+      <div className="goal-macros">
+        <label>
+          Protein g
+          <input
+            inputMode="numeric"
+            value={protein}
+            placeholder={rec ? String(rec.protein) : ''}
+            onChange={(e) => setProtein(e.target.value)}
+            aria-label="Proteinziel in Gramm"
+          />
+        </label>
+        <label>
+          Kohlenh. g
+          <input
+            inputMode="numeric"
+            value={carbs}
+            placeholder={rec ? String(rec.carbs) : ''}
+            onChange={(e) => setCarbs(e.target.value)}
+            aria-label="Kohlenhydrateziel in Gramm"
+          />
+        </label>
+        <label>
+          Fett g
+          <input
+            inputMode="numeric"
+            value={fat}
+            placeholder={rec ? String(rec.fat) : ''}
+            onChange={(e) => setFat(e.target.value)}
+            aria-label="Fettziel in Gramm"
+          />
+        </label>
+      </div>
+      <p className="hint">Leer = Empfehlung aus kcal (20 / 50 / 30 %)</p>
+      <div className="goal-edit">
+        <button type="submit" className="btn small primary">
+          OK
         </button>
-      ) : null}
+        {hasAny ? (
+          <button
+            type="button"
+            className="text-btn"
+            onClick={() => {
+              onSave({ kcal: null, protein: null, carbs: null, fat: null })
+              setOpen(false)
+            }}
+          >
+            Weg
+          </button>
+        ) : null}
+        <button type="button" className="text-btn" onClick={() => setOpen(false)}>
+          Abbruch
+        </button>
+      </div>
     </form>
   )
 }
@@ -103,6 +173,78 @@ export function GoalLine({
           Ziel {formatKcal(goal)} <span>+ {formatKcal(burned)} Sport</span>
         </p>
       ) : null}
+    </div>
+  )
+}
+
+const MACRO_ROWS = [
+  { key: 'protein' as const, short: 'P', label: 'Protein' },
+  { key: 'carbs' as const, short: 'K', label: 'Kohlenh.' },
+  { key: 'fat' as const, short: 'F', label: 'Fett' },
+]
+
+export function MacroBars({
+  protein,
+  carbs,
+  fat,
+  targets,
+  custom,
+}: {
+  protein: number
+  carbs: number
+  fat: number
+  targets: MacroTargets
+  custom?: Pick<Goals, 'protein' | 'carbs' | 'fat'>
+}) {
+  const values = { protein, carbs, fat }
+  if (!hasMacroTargets(targets)) {
+    return (
+      <div className="hero-macros">
+        {MACRO_ROWS.map((row) => (
+          <span key={row.key}>
+            <strong>{formatMacro(values[row.key])}</strong> {row.short}
+          </span>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="macro-bars">
+      {MACRO_ROWS.map((row) => {
+        const value = values[row.key]
+        const target = targets[row.key]
+        if (target == null) {
+          return (
+            <div key={row.key} className="macro-bar-row">
+              <div className="macro-bar-head">
+                <span>{row.label}</span>
+                <strong>{formatMacro(value)} g</strong>
+              </div>
+            </div>
+          )
+        }
+        const remain = target - value
+        const over = remain < -0.5
+        const pct = target > 0 ? Math.min(100, (value / target) * 100) : 0
+        const own = custom?.[row.key] != null
+        return (
+          <div key={row.key} className={`macro-bar-row ${over ? 'over' : ''}`}>
+            <div className="macro-bar-head">
+              <span>
+                {row.label}
+                {own ? <em> eigenes Ziel</em> : null}
+              </span>
+              <strong>
+                {formatMacro(value)} / {formatMacro(target)} g
+              </strong>
+            </div>
+            <div className="goal-bar" aria-hidden="true">
+              <span className="goal-bar-fill" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

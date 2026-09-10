@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AddSheet } from '../components/AddSheet'
-import { GoalEditor, GoalLine } from '../components/GoalEditor'
+import { GoalEditor, GoalLine, MacroBars } from '../components/GoalEditor'
 import { useData } from '../data'
 import { formatDayMedium, isToday, lastDays, startOfMonth, startOfWeek, todayId, weekdayShort } from '../dates'
-import { useKcalGoal } from '../goal'
+import { addMacroTargets, macroTargets, useGoals, type MacroTargets } from '../goal'
 import { addNutrients, emptyNutrients, forGrams, formatKcal, formatMacro } from '../nutrition'
 import type { LogEntry, Nutrients } from '../types'
 
@@ -37,7 +37,8 @@ export function History() {
   const weekDays = lastDays(7, today)
   const weekStart = startOfWeek(today)
   const monthStart = startOfMonth(today)
-  const { goal, setGoal } = useKcalGoal()
+  const { goals, setGoals } = useGoals()
+  const goal = goals.kcal
   const [metric, setMetric] = useState<Metric>('kcal')
   const [adding, setAdding] = useState<string | null>(null)
 
@@ -68,6 +69,21 @@ export function History() {
   const weekAvg = daysInWeekSoFar > 0 ? weekNutrients.kcal / daysInWeekSoFar : 0
   const weekBurnedAvg = daysInWeekSoFar > 0 ? weekBurned / daysInWeekSoFar : 0
 
+  const weekTargets = useMemo(() => {
+    const days = weekDays.filter((id) => id <= today)
+    return days.reduce<MacroTargets>(
+      (acc, id) =>
+        addMacroTargets(
+          acc,
+          macroTargets(
+            goals,
+            activities.filter((a) => a.date === id).reduce((sum, a) => sum + a.kcal, 0),
+          ),
+        ),
+      { protein: null, carbs: null, fat: null },
+    )
+  }, [activities, goals, today, weekDays])
+
   const dates = [
     ...new Set([...weekDays, ...entries.map((e) => e.date), ...activities.map((a) => a.date)]),
   ].sort((a, b) => (a < b ? 1 : -1))
@@ -76,7 +92,7 @@ export function History() {
     <main className="page">
       <header className="page-head">
         <h1 className="page-title">Verlauf</h1>
-        <GoalEditor goal={goal} onSave={setGoal} />
+        <GoalEditor goals={goals} onSave={setGoals} />
       </header>
       <div className="metric-tabs">
         {(['kcal', 'protein', 'carbs', 'fat'] as const).map((m) => (
@@ -96,9 +112,11 @@ export function History() {
           const burned = burnedForDate(id)
           const value = metricValue(n, metric)
           const to = isToday(id) ? '/' : `/tag/${id}`
-          const effective = (goal ?? 0) + burned
-          const over = metric === 'kcal' && goal != null && n.kcal > effective + 1
-          const under = metric === 'kcal' && goal != null && n.kcal > 0 && n.kcal < effective - 1
+          const dayTargets = macroTargets(goals, burned)
+          const target =
+            metric === 'kcal' ? (goal != null ? goal + burned : null) : dayTargets[metric]
+          const over = target != null && value > target + 1
+          const under = target != null && value > 0 && value < target - 1
           return (
             <Link
               key={id}
@@ -123,16 +141,14 @@ export function History() {
         <span className="sport-stat">
           <strong>−{formatKcal(weekBurned)}</strong> Sport
         </span>
-        <span>
-          <strong>{formatMacro(weekNutrients.protein)}</strong> P
-        </span>
-        <span>
-          <strong>{formatMacro(weekNutrients.carbs)}</strong> K
-        </span>
-        <span>
-          <strong>{formatMacro(weekNutrients.fat)}</strong> F
-        </span>
       </div>
+      <MacroBars
+        protein={weekNutrients.protein}
+        carbs={weekNutrients.carbs}
+        fat={weekNutrients.fat}
+        targets={weekTargets}
+        custom={goals}
+      />
       <div className="stat-row">
         <div className="stat-card">
           <span>Ø Woche</span>
