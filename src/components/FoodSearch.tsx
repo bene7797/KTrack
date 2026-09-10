@@ -104,10 +104,16 @@ export function FoodSearch({ foods, placeholder = 'z. B. Banane, Haferflocken', 
     status !== 'loading' &&
     query.trim().length >= 2 &&
     tags.length === 0
+  const hint =
+    status === 'error' && tags.length === 0
+      ? 'Online-Suche nicht erreichbar.'
+      : nothing
+        ? 'Nichts gefunden.'
+        : null
 
   return (
     <div className="stack search-block">
-      {tags.length > 0 ? (
+      <div className="search-tags-slot">
         <div className="search-tags" aria-label="Treffer">
           {tags.map((tag) => (
             <button type="button" key={tag.key} className="search-tag" onClick={tag.pick}>
@@ -115,13 +121,10 @@ export function FoodSearch({ foods, placeholder = 'z. B. Banane, Haferflocken', 
               {tag.kcal > 0 ? <small>{formatKcal(tag.kcal)}</small> : null}
             </button>
           ))}
+          {status === 'loading' ? <span className="search-tag search-tag-ghost">Suche…</span> : null}
         </div>
-      ) : null}
-      {status === 'loading' ? <p className="hint search-hint">Suche…</p> : null}
-      {status === 'error' && tags.length === 0 ? (
-        <p className="hint search-hint">Online-Suche nicht erreichbar.</p>
-      ) : null}
-      {nothing ? <p className="hint search-hint">Nichts gefunden.</p> : null}
+        {hint ? <p className="hint search-hint">{hint}</p> : null}
+      </div>
       <form
         className="search-row"
         onSubmit={(e) => {
