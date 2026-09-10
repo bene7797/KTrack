@@ -28,6 +28,11 @@ export function AddSheet({ date, onClose }: Props) {
   const { foods, dishes, logItem, saveFood } = useData()
   const navigate = useNavigate()
   const [view, setView] = useState<View>({ t: 'menu' })
+  const [logDate, setLogDate] = useState(date)
+
+  useEffect(() => {
+    setLogDate(date)
+  }, [date])
 
   useEffect(() => {
     const prev = document.body.style.overflow
@@ -40,7 +45,7 @@ export function AddSheet({ date, onClose }: Props) {
   const finishFood = async (food: Food, grams: number, name: string) => {
     await saveFood({ ...food, name })
     await logItem({
-      date,
+      date: logDate,
       name,
       grams,
       per100g: food.per100g,
@@ -93,6 +98,10 @@ export function AddSheet({ date, onClose }: Props) {
             <>
               <div className="sheet-handle" />
               <h2 className="sheet-title">Hinzufügen</h2>
+              <label className="date-field">
+                Tag
+                <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} />
+              </label>
               <div className="action-grid">
                 <button type="button" className="action-card" onClick={() => setView({ t: 'scan' })}>
                   <span>Scannen</span>
@@ -250,7 +259,7 @@ export function AddSheet({ date, onClose }: Props) {
                 submitLabel="Eintragen"
                 onSubmit={async ({ name, grams, per100g }) => {
                   await logItem({
-                    date,
+                    date: logDate,
                     name,
                     grams,
                     per100g,

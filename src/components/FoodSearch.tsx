@@ -5,6 +5,13 @@ import { formatKcal } from '../nutrition'
 import { searchProducts, type OffHit } from '../off'
 import type { Food } from '../types'
 
+type Tag = {
+  key: string
+  name: string
+  kcal: number
+  pick: () => void
+}
+
 type Props = {
   foods: Food[]
   placeholder?: string
@@ -28,9 +35,7 @@ export function FoodSearch({ foods, placeholder = 'z. B. Banane, Haferflocken', 
   }, [local, query])
 
   const remote = useMemo(() => {
-    const taken = new Set(
-      [...local, ...builtins].map((f) => f.name.toLowerCase()),
-    )
+    const taken = new Set([...local, ...builtins].map((f) => f.name.toLowerCase()))
     return hits.filter((hit) => {
       if (hit.barcode && foods.some((f) => f.barcode === hit.barcode)) return false
       if (taken.has(hit.name.toLowerCase())) return false
@@ -58,30 +63,70 @@ export function FoodSearch({ foods, placeholder = 'z. B. Banane, Haferflocken', 
           setHits([])
           setStatus('error')
         })
-    }, 350)
+    }, 280)
     return () => {
       window.clearTimeout(timer)
       ctrl.abort()
     }
   }, [query])
 
-  const pickHit = (hit: OffHit) => {
-    onPick(foodFromParts({ name: hit.name, barcode: hit.barcode, per100g: hit.per100g }))
-  }
+  const tags: Tag[] = useMemo(() => {
+    const list: Tag[] = []
+    for (const food of local) {
+      list.push({
+        key: food.id,
+        name: food.name,
+        kcal: food.per100g.kcal,
+        pick: () => onPick(food),
+      })
+    }
+    for (const food of builtins) {
+      list.push({
+        key: food.id,
+        name: food.name,
+        kcal: food.per100g.kcal,
+        pick: () => onPick(foodFromParts({ name: food.name, per100g: food.per100g })),
+      })
+    }
+    for (const hit of remote) {
+      list.push({
+        key: hit.barcode || hit.name,
+        name: hit.name,
+        kcal: hit.per100g.kcal,
+        pick: () =>
+          onPick(foodFromParts({ name: hit.name, barcode: hit.barcode, per100g: hit.per100g })),
+      })
+    }
+    return list.slice(0, 12)
+  }, [builtins, local, onPick, remote])
 
   const nothing =
     status !== 'loading' &&
     query.trim().length >= 2 &&
-    remote.length === 0 &&
-    local.length === 0 &&
-    builtins.length === 0
+    tags.length === 0
 
   return (
-    <div className="stack">
+    <div className="stack search-block">
+      {tags.length > 0 ? (
+        <div className="search-tags" aria-label="Treffer">
+          {tags.map((tag) => (
+            <button type="button" key={tag.key} className="search-tag" onClick={tag.pick}>
+              <span>{tag.name}</span>
+              {tag.kcal > 0 ? <small>{formatKcal(tag.kcal)}</small> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {status === 'loading' ? <p className="hint search-hint">Suche…</p> : null}
+      {status === 'error' && tags.length === 0 ? (
+        <p className="hint search-hint">Online-Suche nicht erreichbar.</p>
+      ) : null}
+      {nothing ? <p className="hint search-hint">Nichts gefunden.</p> : null}
       <form
         className="search-row"
         onSubmit={(e) => {
           e.preventDefault()
+          tags[0]?.pick()
         }}
       >
         <label>
@@ -95,55 +140,6 @@ export function FoodSearch({ foods, placeholder = 'z. B. Banane, Haferflocken', 
           />
         </label>
       </form>
-      {local.length > 0 ? (
-        <ul className="plain-list">
-          {local.map((food) => (
-            <li key={food.id}>
-              <button type="button" className="list-btn" onClick={() => onPick(food)}>
-                <span>{food.name}</span>
-                <small>{formatKcal(food.per100g.kcal)} kcal / 100 g · gespeichert</small>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {builtins.length > 0 ? (
-        <ul className="plain-list">
-          {builtins.map((food) => (
-            <li key={food.id}>
-              <button
-                type="button"
-                className="list-btn"
-                onClick={() => onPick(foodFromParts({ name: food.name, per100g: food.per100g }))}
-              >
-                <span>{food.name}</span>
-                <small>{formatKcal(food.per100g.kcal)} kcal / 100 g</small>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {status === 'loading' ? <p className="hint">Suche in Open Food Facts…</p> : null}
-      {status === 'error' && remote.length === 0 && builtins.length === 0 ? (
-        <p className="hint">Online-Suche nicht erreichbar. Unten selbst eintragen.</p>
-      ) : null}
-      {remote.length > 0 ? (
-        <ul className="plain-list">
-          {remote.map((hit) => (
-            <li key={hit.barcode || hit.name}>
-              <button type="button" className="list-btn" onClick={() => pickHit(hit)}>
-                <span>{hit.name}</span>
-                <small>
-                  {hit.per100g.kcal > 0
-                    ? `${formatKcal(hit.per100g.kcal)} kcal / 100 g`
-                    : 'ohne Nährwerte'}
-                </small>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {nothing ? <p className="hint">Nichts gefunden. Unten selbst eintragen.</p> : null}
     </div>
   )
 }

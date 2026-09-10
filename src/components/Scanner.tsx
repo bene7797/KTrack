@@ -5,10 +5,6 @@ type Props = {
   onClose: () => void
 }
 
-function supportsNative(): boolean {
-  return typeof window !== 'undefined' && 'BarcodeDetector' in window
-}
-
 export function Scanner({ onDetect, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const onDetectRef = useRef(onDetect)
@@ -29,11 +25,15 @@ export function Scanner({ onDetect, onClose }: Props) {
       onDetectRef.current(cleaned)
     }
 
-    async function startNative() {
+    async function startPreviewAndDetect() {
       const video = videoRef.current
-      if (!video) return
+      if (!video) throw new Error('no video')
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
       })
       if (cancelled) {
@@ -41,36 +41,43 @@ export function Scanner({ onDetect, onClose }: Props) {
         return
       }
       video.srcObject = stream
+      video.muted = true
+      video.playsInline = true
+      video.setAttribute('playsinline', 'true')
       await video.play()
-      const detector = new BarcodeDetector({
-        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
-      })
-      let raf = 0
-      const tick = async () => {
-        if (cancelled || detected.current) return
-        try {
-          const codes = await detector.detect(video)
-          const value = codes[0]?.rawValue
-          if (value) {
-            handle(value)
-            return
-          }
-        } catch {
-          /* frame skipped */
-        }
-        raf = requestAnimationFrame(() => {
-          void tick()
-        })
-      }
-      void tick()
-      stop = () => {
-        cancelAnimationFrame(raf)
-        stream.getTracks().forEach((t) => t.stop())
-        video.srcObject = null
-      }
-    }
 
-    async function startHtml5() {
+      if ('BarcodeDetector' in window) {
+        const detector = new BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128'],
+        })
+        let raf = 0
+        const tick = async () => {
+          if (cancelled || detected.current) return
+          try {
+            if (video.readyState >= 2) {
+              const codes = await detector.detect(video)
+              const value = codes[0]?.rawValue
+              if (value) {
+                handle(value)
+                return
+              }
+            }
+          } catch {
+            /* frame skipped */
+          }
+          raf = requestAnimationFrame(() => {
+            void tick()
+          })
+        }
+        void tick()
+        stop = () => {
+          cancelAnimationFrame(raf)
+          stream.getTracks().forEach((t) => t.stop())
+          video.srcObject = null
+        }
+        return
+      }
+
       const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode')
       const scanner = new Html5Qrcode('scanner-region', {
         verbose: false,
@@ -82,33 +89,31 @@ export function Scanner({ onDetect, onClose }: Props) {
           Html5QrcodeSupportedFormats.CODE_128,
         ],
       })
+      stream.getTracks().forEach((t) => t.stop())
+      video.srcObject = null
       await scanner.start(
         { facingMode: 'environment' },
         {
-          fps: 8,
-          qrbox: { width: 280, height: 140 },
+          fps: 10,
+          qrbox: (w, h) => ({
+            width: Math.floor(Math.min(w * 0.86, 340)),
+            height: Math.floor(Math.min(h * 0.28, 150)),
+          }),
         },
         (text) => handle(text),
         () => undefined,
       )
       stop = () => {
-        void scanner.stop().then(() => scanner.clear()).catch(() => undefined)
+        void scanner
+          .stop()
+          .then(() => scanner.clear())
+          .catch(() => undefined)
       }
     }
 
-    ;(async () => {
-      try {
-        if (supportsNative()) await startNative()
-        else await startHtml5()
-      } catch {
-        if (cancelled) return
-        try {
-          await startHtml5()
-        } catch {
-          if (!cancelled) setError('Kamera nicht verfügbar. Code unten eintippen.')
-        }
-      }
-    })()
+    void startPreviewAndDetect().catch(() => {
+      if (!cancelled) setError('Kamera nicht verfügbar. Code unten eintippen.')
+    })
 
     return () => {
       cancelled = true
@@ -126,8 +131,8 @@ export function Scanner({ onDetect, onClose }: Props) {
         <span className="spacer" />
       </header>
       <div className="scanner-stage">
-        {supportsNative() ? <video ref={videoRef} className="scanner-video" playsInline muted /> : null}
-        <div id="scanner-region" className={supportsNative() ? 'scanner-hidden' : 'scanner-box'} />
+        <video ref={videoRef} className="scanner-video" autoPlay muted playsInline />
+        <div id="scanner-region" className="scanner-box" />
         <div className="scanner-guide" />
       </div>
       {error ? <p className="hint warn">{error}</p> : <p className="hint">Barcode in den Rahmen halten</p>}

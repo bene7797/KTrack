@@ -55,7 +55,7 @@ export function NutrientPanel({ nutrients, gramsLabel }: Props) {
       ) : null}
       {vitamins.length > 0 ? (
         <>
-          <h3 className="section-label">Vitamine &amp; Mineralstoffe</h3>
+          <h3 className="section-label">Vitamine, Mineralstoffe &amp; mehr</h3>
           <dl className="nutrient-list">
             {vitamins.map((v) => (
               <div key={v.key} className="nutrient-row">

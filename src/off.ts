@@ -20,17 +20,20 @@ type OffResponse = {
 }
 
 const VITAMIN_MAP: { keys: string[]; label: string; fallbackUnit: string }[] = [
-  { keys: ['vitamin-a', 'vitamin_a'], label: 'Vitamin A', fallbackUnit: 'µg' },
-  { keys: ['vitamin-d', 'vitamin-d3', 'vitamin_d'], label: 'Vitamin D', fallbackUnit: 'µg' },
-  { keys: ['vitamin-e', 'vitamin_e'], label: 'Vitamin E', fallbackUnit: 'mg' },
-  { keys: ['vitamin-k', 'vitamin_k'], label: 'Vitamin K', fallbackUnit: 'µg' },
-  { keys: ['vitamin-c', 'vitamin_c'], label: 'Vitamin C', fallbackUnit: 'mg' },
-  { keys: ['vitamin-b1', 'thiamin'], label: 'Vitamin B1', fallbackUnit: 'mg' },
+  { keys: ['vitamin-a', 'vitamin_a', 'retinol'], label: 'Vitamin A', fallbackUnit: 'µg' },
+  { keys: ['beta-carotene', 'beta-carotene-equivalent'], label: 'Beta-Carotin', fallbackUnit: 'µg' },
+  { keys: ['vitamin-d', 'vitamin-d3', 'vitamin_d', 'cholecalciferol'], label: 'Vitamin D', fallbackUnit: 'µg' },
+  { keys: ['vitamin-e', 'vitamin_e', 'tocopherol'], label: 'Vitamin E', fallbackUnit: 'mg' },
+  { keys: ['vitamin-k', 'vitamin-k1', 'vitamin_k', 'phylloquinone'], label: 'Vitamin K', fallbackUnit: 'µg' },
+  { keys: ['vitamin-c', 'vitamin_c', 'ascorbic-acid'], label: 'Vitamin C', fallbackUnit: 'mg' },
+  { keys: ['vitamin-b1', 'thiamin', 'thiamine'], label: 'Vitamin B1', fallbackUnit: 'mg' },
   { keys: ['vitamin-b2', 'riboflavin'], label: 'Vitamin B2', fallbackUnit: 'mg' },
-  { keys: ['vitamin-pp', 'niacin', 'vitamin-b3'], label: 'Niacin', fallbackUnit: 'mg' },
-  { keys: ['vitamin-b6', 'vitamin_b6'], label: 'Vitamin B6', fallbackUnit: 'mg' },
-  { keys: ['vitamin-b9', 'folates', 'folic-acid'], label: 'Folsäure', fallbackUnit: 'µg' },
-  { keys: ['vitamin-b12', 'vitamin_b12'], label: 'Vitamin B12', fallbackUnit: 'µg' },
+  { keys: ['vitamin-pp', 'niacin', 'vitamin-b3', 'nicotinic-acid'], label: 'Niacin (B3)', fallbackUnit: 'mg' },
+  { keys: ['pantothenic-acid', 'vitamin-b5', 'pantothenic_acid'], label: 'Pantothensäure (B5)', fallbackUnit: 'mg' },
+  { keys: ['vitamin-b6', 'vitamin_b6', 'pyridoxin'], label: 'Vitamin B6', fallbackUnit: 'mg' },
+  { keys: ['biotin', 'vitamin-b7', 'vitamin-h'], label: 'Biotin (B7)', fallbackUnit: 'µg' },
+  { keys: ['vitamin-b9', 'folates', 'folic-acid', 'folate'], label: 'Folsäure (B9)', fallbackUnit: 'µg' },
+  { keys: ['vitamin-b12', 'vitamin_b12', 'cobalamin'], label: 'Vitamin B12', fallbackUnit: 'µg' },
   { keys: ['calcium'], label: 'Calcium', fallbackUnit: 'mg' },
   { keys: ['iron'], label: 'Eisen', fallbackUnit: 'mg' },
   { keys: ['magnesium'], label: 'Magnesium', fallbackUnit: 'mg' },
@@ -38,6 +41,25 @@ const VITAMIN_MAP: { keys: string[]; label: string; fallbackUnit: string }[] = [
   { keys: ['zinc'], label: 'Zink', fallbackUnit: 'mg' },
   { keys: ['phosphorus'], label: 'Phosphor', fallbackUnit: 'mg' },
   { keys: ['iodine'], label: 'Jod', fallbackUnit: 'µg' },
+  { keys: ['copper'], label: 'Kupfer', fallbackUnit: 'mg' },
+  { keys: ['manganese'], label: 'Mangan', fallbackUnit: 'mg' },
+  { keys: ['selenium'], label: 'Selen', fallbackUnit: 'µg' },
+  { keys: ['chromium'], label: 'Chrom', fallbackUnit: 'µg' },
+  { keys: ['molybdenum'], label: 'Molybdän', fallbackUnit: 'µg' },
+  { keys: ['fluoride', 'fluorine'], label: 'Fluorid', fallbackUnit: 'mg' },
+  { keys: ['chloride', 'chlorine'], label: 'Chlorid', fallbackUnit: 'mg' },
+  { keys: ['silica', 'silicon'], label: 'Silicium', fallbackUnit: 'mg' },
+  { keys: ['caffeine'], label: 'Koffein', fallbackUnit: 'mg' },
+  { keys: ['cholesterol'], label: 'Cholesterin', fallbackUnit: 'mg' },
+  { keys: ['omega-3-fat', 'alpha-linolenic-acid'], label: 'Omega-3', fallbackUnit: 'g' },
+  { keys: ['omega-6-fat', 'linoleic-acid'], label: 'Omega-6', fallbackUnit: 'g' },
+  { keys: ['saturated-fat'], label: 'Gesättigte Fettsäuren', fallbackUnit: 'g' },
+  { keys: ['monounsaturated-fat'], label: 'Einfach ungesättigt', fallbackUnit: 'g' },
+  { keys: ['polyunsaturated-fat'], label: 'Mehrfach ungesättigt', fallbackUnit: 'g' },
+  { keys: ['trans-fat'], label: 'Transfettsäuren', fallbackUnit: 'g' },
+  { keys: ['starch'], label: 'Stärke', fallbackUnit: 'g' },
+  { keys: ['polyols'], label: 'Zuckeralkohole', fallbackUnit: 'g' },
+  { keys: ['alcohol'], label: 'Alkohol', fallbackUnit: 'g' },
 ]
 
 function num(n: OffNutriments | undefined, ...keys: string[]): number {
@@ -79,6 +101,52 @@ function mapNutrients(n: OffNutriments | undefined): Nutrients {
       }
     }
     if (value > 0) vitamins.push({ key: spec.label, label: spec.label, value, unit })
+  }
+
+  const used = new Set(VITAMIN_MAP.flatMap((s) => s.keys))
+  const skip = new Set([
+    ...used,
+    'energy',
+    'energy-kcal',
+    'energy-kj',
+    'proteins',
+    'carbohydrates',
+    'fat',
+    'fiber',
+    'sugars',
+    'salt',
+    'sodium',
+    'nova-group',
+    'nutrition-score-fr',
+    'nutrition-score-uk',
+    'fruits-vegetables-nuts',
+    'fruits-vegetables-legumes',
+    'fruits-vegetables-nuts-estimate-from-ingredients',
+    'fruits-vegetables-legumes-estimate-from-ingredients',
+    'carbon-footprint',
+    'carbon-footprint-from-meat-or-fish',
+    'energy-from-fat',
+    'added-sugars',
+    'ph',
+  ])
+  if (n) {
+    for (const key of Object.keys(n)) {
+      if (!key.endsWith('_100g')) continue
+      const base = key.slice(0, -5)
+      if (skip.has(base) || base.includes('estimate') || base.includes('score') || base.includes('points')) continue
+      const value = num(n, key)
+      if (value <= 0) continue
+      if (vitamins.some((v) => v.key === base || v.label === base)) continue
+      const unitVal = n[`${base}_unit`]
+      const unit = typeof unitVal === 'string' && unitVal.trim() ? unitVal.trim() : 'g'
+      vitamins.push({
+        key: base,
+        label: base.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        value,
+        unit,
+      })
+      skip.add(base)
+    }
   }
 
   return {

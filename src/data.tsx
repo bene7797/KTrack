@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as db from './db'
-import { forGrams } from './nutrition'
+import { addNutrients, emptyNutrients, forGrams } from './nutrition'
 import type { Dish, Food, LogEntry, LogSource, Nutrients } from './types'
 
 type DataCtx = {
@@ -138,18 +138,10 @@ export function useDayTotals(date: string) {
   const { entries } = useData()
   const dayEntries = entries.filter((e) => e.date === date)
   const nutrients = dayEntries.reduce(
-    (acc, e) => {
-      const n = forGrams(e.per100g, e.grams)
-      return {
-        kcal: acc.kcal + n.kcal,
-        protein: acc.protein + n.protein,
-        carbs: acc.carbs + n.carbs,
-        fat: acc.fat + n.fat,
-      }
-    },
-    { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+    (acc, e) => addNutrients(acc, forGrams(e.per100g, e.grams)),
+    emptyNutrients(),
   )
-  return { dayEntries, ...nutrients }
+  return { dayEntries, nutrients, ...nutrients }
 }
 
 export function foodFromParts(input: {
