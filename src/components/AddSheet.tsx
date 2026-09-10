@@ -6,6 +6,7 @@ import { dishPer100g, dishTotals, formatKcal } from '../nutrition'
 import { lookupBarcode } from '../off'
 import type { Dish, Food } from '../types'
 import { AmountForm } from './AmountForm'
+import { FoodSearch } from './FoodSearch'
 import { Scanner } from './Scanner'
 
 type View =
@@ -99,7 +100,7 @@ export function AddSheet({ date, onClose }: Props) {
                 </button>
                 <button type="button" className="action-card" onClick={() => setView({ t: 'manual' })}>
                   <span>Manuell</span>
-                  <small>Name &amp; kcal</small>
+                  <small>Suchen oder selbst</small>
                 </button>
                 <button type="button" className="action-card" onClick={() => setView({ t: 'dishes' })}>
                   <span>Gericht</span>
@@ -148,7 +149,7 @@ export function AddSheet({ date, onClose }: Props) {
                 className="btn primary"
                 onClick={() => setView({ t: 'manual', barcode: view.barcode })}
               >
-                Manuell eintragen
+                Suchen oder selbst eintragen
               </button>
               <button type="button" className="btn" onClick={() => setView({ t: 'scan' })}>
                 Erneut scannen
@@ -175,8 +176,25 @@ export function AddSheet({ date, onClose }: Props) {
               <button type="button" className="text-btn" onClick={() => setView({ t: 'menu' })}>
                 Zurück
               </button>
+              <h2 className="sheet-title">Suchen oder selbst</h2>
+              <FoodSearch
+                foods={foods}
+                onPick={(food) => {
+                  const empty =
+                    food.per100g.kcal === 0 &&
+                    food.per100g.protein === 0 &&
+                    food.per100g.carbs === 0 &&
+                    food.per100g.fat === 0
+                  if (empty) {
+                    setView({ t: 'manual', barcode: food.barcode, name: food.name })
+                    return
+                  }
+                  setView({ t: 'amount', food })
+                }}
+              />
+              <p className="divider-label">oder selbst eintragen</p>
               <AmountForm
-                title="Manuell"
+                key={`${view.name ?? ''}-${view.barcode ?? 'new'}`}
                 initialName={view.name ?? ''}
                 allowManualMacros
                 submitLabel="Eintragen"
@@ -297,7 +315,7 @@ export function IngredientPicker({
                   <span>Scannen</span>
                 </button>
                 <button type="button" className="action-card" onClick={() => setView({ t: 'manual' })}>
-                  <span>Manuell</span>
+                  <span>Suchen / selbst</span>
                 </button>
               </div>
               {foods.length > 0 ? (
@@ -319,7 +337,7 @@ export function IngredientPicker({
             <div className="stack">
               <p className="hint warn">{view.message}</p>
               <button type="button" className="btn primary" onClick={() => setView({ t: 'manual', barcode: view.barcode })}>
-                Manuell
+                Suchen oder selbst
               </button>
             </div>
           ) : null}
@@ -335,16 +353,36 @@ export function IngredientPicker({
             />
           ) : null}
           {view.t === 'manual' ? (
-            <AmountForm
-              initialName=""
-              allowManualMacros
-              submitLabel="Hinzufügen"
-              onSubmit={async ({ name, grams, per100g }) => {
-                const food = foodFromParts({ id: newId(), name, barcode: view.barcode, per100g })
-                await saveFood(food)
-                onPick(food, grams, name)
-              }}
-            />
+            <>
+              <button type="button" className="text-btn" onClick={() => setView({ t: 'menu' })}>
+                Zurück
+              </button>
+              <h2 className="sheet-title">Suchen oder selbst</h2>
+              <FoodSearch
+                foods={foods}
+                onPick={(food) => {
+                  const empty =
+                    food.per100g.kcal === 0 &&
+                    food.per100g.protein === 0 &&
+                    food.per100g.carbs === 0 &&
+                    food.per100g.fat === 0
+                  if (empty) setView({ t: 'manual', barcode: food.barcode, name: food.name })
+                  else setView({ t: 'amount', food })
+                }}
+              />
+              <p className="divider-label">oder selbst eintragen</p>
+              <AmountForm
+                key={`${view.name ?? ''}-${view.barcode ?? 'new'}`}
+                initialName={view.name ?? ''}
+                allowManualMacros
+                submitLabel="Hinzufügen"
+                onSubmit={async ({ name, grams, per100g }) => {
+                  const food = foodFromParts({ id: newId(), name, barcode: view.barcode, per100g })
+                  await saveFood(food)
+                  onPick(food, grams, name)
+                }}
+              />
+            </>
           ) : null}
         </div>
       ) : null}

@@ -30,7 +30,7 @@ export default defineConfig(({ command }) => ({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/world\.openfoodfacts\.org\/.*/i,
+            urlPattern: /^https:\/\/(world\.openfoodfacts\.org|search\.openfoodfacts\.org)\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'off-api',

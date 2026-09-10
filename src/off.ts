@@ -10,7 +10,7 @@ type OffProduct = {
   product_name?: string
   product_name_de?: string
   generic_name?: string
-  brands?: string
+  brands?: string | string[]
   nutriments?: OffNutriments
 }
 
@@ -93,16 +93,92 @@ function mapNutrients(n: OffNutriments | undefined): Nutrients {
   }
 }
 
+function brandName(p: OffProduct): string {
+  if (Array.isArray(p.brands)) return (p.brands[0] || '').trim()
+  return (p.brands || '').split(',')[0]?.trim() || ''
+}
+
 function productName(p: OffProduct): string {
   const name = (p.product_name_de || p.product_name || p.generic_name || '').trim()
-  const brand = (p.brands || '').split(',')[0]?.trim()
+  const brand = brandName(p)
   if (name && brand && !name.toLowerCase().includes(brand.toLowerCase())) return `${brand} ${name}`
   return name || brand || 'Unbekanntes Produkt'
+}
+
+export type OffHit = {
+  barcode?: string
+  name: string
+  per100g: Nutrients
+}
+
+function fromProduct(p: OffProduct): OffHit | null {
+  const name = productName(p)
+  const per100g = mapNutrients(p.nutriments)
+  const empty =
+    per100g.kcal === 0 && per100g.protein === 0 && per100g.carbs === 0 && per100g.fat === 0
+  if ((!name || name === 'Unbekanntes Produkt') && empty) return null
+  return {
+    barcode: p.code,
+    name: name || (p.code ? `Produkt ${p.code}` : 'Unbekanntes Produkt'),
+    per100g,
+  }
 }
 
 export type OffLookup =
   | { ok: true; barcode: string; name: string; per100g: Nutrients }
   | { ok: false; barcode: string; reason: 'not-found' | 'network' }
+
+export async function searchProducts(query: string, signal?: AbortSignal): Promise<OffHit[]> {
+  const q = query.trim()
+  if (q.length < 2) return []
+  try {
+    return await searchLicous(q, signal)
+  } catch {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    return searchCgi(q, signal)
+  }
+}
+
+function collectHits(products: OffProduct[]): OffHit[] {
+  const seen = new Set<string>()
+  const hits: OffHit[] = []
+  for (const product of products) {
+    const hit = fromProduct(product)
+    if (!hit) continue
+    const key = (hit.barcode || hit.name).toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    hits.push(hit)
+  }
+  return hits
+}
+
+async function searchLicous(q: string, signal?: AbortSignal): Promise<OffHit[]> {
+  const url = new URL('https://search.openfoodfacts.org/search')
+  url.searchParams.set('q', q)
+  url.searchParams.set('page_size', '12')
+  url.searchParams.set('langs', 'de')
+  const res = await fetch(url, { headers: { Accept: 'application/json' }, signal })
+  if (!res.ok) throw new Error('search failed')
+  const data = (await res.json()) as { hits?: OffProduct[] }
+  return collectHits(data.hits ?? [])
+}
+
+async function searchCgi(q: string, signal?: AbortSignal): Promise<OffHit[]> {
+  const url = new URL('https://world.openfoodfacts.org/cgi/search.pl')
+  url.searchParams.set('search_terms', q)
+  url.searchParams.set('search_simple', '1')
+  url.searchParams.set('action', 'process')
+  url.searchParams.set('json', '1')
+  url.searchParams.set('page_size', '12')
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json', 'User-Agent': USER_AGENT },
+    signal,
+  })
+  if (!res.ok) throw new Error('search failed')
+  const data = (await res.json()) as { products?: OffProduct[] }
+  return collectHits(data.products ?? [])
+}
 
 export async function lookupBarcode(barcode: string): Promise<OffLookup> {
   const code = barcode.replace(/\s/g, '')
